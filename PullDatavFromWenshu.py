@@ -11,68 +11,13 @@ from shutil import copyfile
 from docx import Document
 
 import Spider
-import Court
+import CourtList
 
 
 def get_case_info(wenshu, start_items, total_items):
     wenshu.getCaseList(start_items, total_items)
 
-def get_doc_info(doc_name):
-    name_list = ['刘正贵、刘正友犯故意伤害罪二审刑事判决书',
-                 '吉马吉波犯运输毒品罪二审刑事判决书',
-                 '周建刚犯故意杀人罪复核刑事判决书',
-                 '孙西华犯故意伤害罪二审刑事判决书',
-                 '张洪华犯故意伤害罪二审刑事附带民事判决书',
-                 '朱秀英等私分国有资产二审刑事判决书',
-                 '李东科等人故意伤害案二审刑事判决书',
-                 '李兴云、谢瑞有、赖永辉犯故意杀人罪二审刑事判决书',
-                 '李廷才、崔毕美犯故意杀人罪二审刑事附带民事判决书',
-                 '汪思春故意杀人案二审刑事判决书',
-                 '洞底故意杀人二审刑事裁定书',
-                 '潘凤英犯故意杀人罪二审刑事判决书',
-                 '王维杰犯故意伤害罪二审刑事判决书',
-                 '罗鹏犯故意伤害罪二审刑事判决书',
-                 '辛磊磊等贩卖毒品案二审刑事判决书',
-                 '郭洪、朱家、王青龙、刘坤、谢红梅、曾清、蒲建国犯故意杀人罪刑...',
-                 '钟新海等制造毒品二审刑事裁定书',
-                 '陈太兵故意杀人案刑附民判决书',
-                 '雷平华、任东东犯贩卖、运输毒品罪二审刑事裁定书']
-    
-    for i in range(len(name_list)):
-        print(name_list[i])
-        doc = Spider.DocAnalyser()
-        doc.analyseDoc(name_list[i])
-        print('')
-        print('')
-        #wt = doc.getWeituoBianhuren()
-        #zd = doc.getZhidingBianhuren()
-        #bg = doc.getBeigaoren()
-        #print('%s         %s' % (name_list[i], wt))
-        #print('%s         %s' % (name_list[i], zd))
-    #print(doc.content)
-    #doc = Spider.DocAnalyser()
-    #doc.analyseDoc('', '吉马吉波犯运输毒品罪二审刑事判决书')
-    #wt = doc.getWeituoBianhuren()
-    #zd = doc.getZhidingBianhuren()
-    #bg = doc.getBeigaoren()
-    
-    #print(wt)
 
-    
-def analyse_case(case_matrix, round):    
-    path = 'Download' + str(round) + '/'
-    col_name = 'name' + str(round)
-    col_date = 'date' + str(round)
-    doc = Spider.DocAnalyser()
-    for i in range(len(case_matrix[col_name])):
-        file_name = path + case_matrix[col_name][i] + case_matrix[col_date][i] + '.docx'
-        print(file_name)
-        doc.analyseDoc(file_name)
-        print('')
-        print('')
-        print('')
-        print('')
-        
     
 def download_case(wenshu, case_matrix, court):
     path = 'Download_' + court + '/'
@@ -126,14 +71,14 @@ def download_case(wenshu, case_matrix, court):
     
     
 def dump2csv(case_matrix, surfix):
-    with open('case' + surfix + '.csv', 'w', newline='', encoding='utf-8_sig') as csvfile:
+    with open(surfix + '.csv', 'w', newline='', encoding='utf-8_sig') as csvfile:
         writer = csv.writer(csvfile)
         writer.writerow(case_matrix.keys())
         writer.writerows(zip(*case_matrix.values()))
 
 
 def read_csv(surfix):
-    with open('case' + surfix + '.csv', encoding='utf-8_sig') as csvfile:
+    with open(surfix + '.csv', encoding='utf-8_sig') as csvfile:
         reader = csv.DictReader(csvfile)
         case = dict.fromkeys(reader.fieldnames)
         for key in case:
@@ -151,7 +96,9 @@ def copy_files():
 # Phase 1: Search and get 2nd case list,
 #          dump case name list into a csv file.
 def phase1(search_criteria, court):
+    print('phase1 %s' % court)
     case_matrix = {}
+    #dump2csv(case_matrix, court)
     # Get 2nd case list with search criteria.
     wenshu = Spider.WenShu()
     wenshu.setSearchCriteria(search_criteria)
@@ -161,6 +108,11 @@ def phase1(search_criteria, court):
     case_matrix['name'] = wenshu.case['name']
     case_matrix['doc_id'] = wenshu.case['doc_id']
     case_matrix['date'] = wenshu.case['date']
+    case_matrix['case_id'] = wenshu.case['case_id']
+    case_matrix['procedure'] = wenshu.case['procedure']
+    case_matrix['court'] = wenshu.case['court']
+    
+    print('%s %s' % (wenshu.total_items, len(case_matrix['name'])))
     #row_count = len(case_matrix['name'])
     #pop_count = 0
     #print('row count %s' % row_count)
@@ -171,23 +123,42 @@ def phase1(search_criteria, court):
     #        for key in case_matrix:
     #            case_matrix[key].pop(i - pop_count)
     #        pop_count += 1
-    dump2csv(case_matrix, 'phase1_' + court)
+    dump2csv(case_matrix, court)
 
 
 def phase2(search_criteria, court):
+    print('phase2 %s' % court)
     # Read csv file and get case list.
-    case_matrix = read_csv('phase1_' + court)
+    case_matrix = read_csv(court)
     wenshu = Spider.WenShu()
     wenshu.setSearchCriteria(search_criteria)
     #print(case_matrix['name2'])
-    case_matrix['download2'] = download_case(wenshu, case_matrix, court)
-    dump2csv(case_matrix, 'phase2_' + court)
+    download_case(wenshu, case_matrix, court)
+    #dump2csv(case_matrix, 'phase2_' + court)
+    
+def phase3(court):
+    #case_matrix = read_csv('phase1_' + court)
+    #wenshu = Spider.WenShu()
+    #wenshu.setSearchCriteria(search_criteria)
+    #print(case_matrix['name2'])
+    #download_case(wenshu, case_matrix, court)
+    #dump2csv(case_matrix, 'phase2_' + court)
+    #case_matrix = read_csv(court)
+    #wenshu = Spider.WenShu()
+    #wenshu.setSearchCriteria(search_criteria)
+    #total_number = wenshu.getTotalItemNumber()
+    #print('%s %s' % (total_number, len(case_matrix['name'])
+    #sys.exit(0)
+    #if int(total_number) == len(case_matrix['name']):
+    file_list = os.listdir('.')
+    for file in file_list:
+        if file[-3:] == 'csv':
+            case_matrix = read_csv(file[:-4])
+            if len(case_matrix['name']) == 20:
+                print(file)
+                os.remove(file)
 
-    
-def phase3(doc_num):
-    case_matrix = read_csv('phase2' + str(doc_num))
-    analyse_case(case_matrix, 2)
-    
+                #print(case_matrix['name'])
 
 def phase5(court_list):
     for court in court_list:
@@ -206,10 +177,20 @@ def main():
     parser.add_argument('-p', '--phase', action='store')
     parser.add_argument('-d', '--doc', action='store')
     parser.add_argument('-c', '--court', action='store')
+    parser.add_argument('-l', '--court_list', action='store')    
     args = parser.parse_args()
-    search_criteria = "案件类型:刑事案件,审判程序:一审,法院地域:四川省,裁判年份:2016,文书类型:判决书," + "基层法院:" + args.court
+    #search_criteria = "案件类型:刑事案件,审判程序:一审,法院地域:四川省,裁判年份:2016,文书类型:判决书," + "基层法院:" + args.court
+    #search_criteria = "案件类型:刑事案件,审判程序:一审,法院地域:四川省,裁判年份:2016,文书类型:判决书,法院层级:中级法院," + "中级法院:" + args.court
     if args.phase == 'all':
-        pass
+        for court in CourtList.court_list[int(args.court_list)]:
+            search_criteria = "案件类型:刑事案件,审判程序:一审,法院地域:四川省,裁判年份:2015,文书类型:判决书," + "基层法院:" + court
+            csv_file = court + '.csv'
+            if not os.path.exists(csv_file):
+                phase1(search_criteria, court)
+            else:
+                phase2(search_criteria, court)
+                #phase3(search_criteria, court)
+        
     elif args.phase == '1':
         print('phase 1')
         phase1(search_criteria, args.court)
