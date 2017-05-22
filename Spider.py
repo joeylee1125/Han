@@ -67,9 +67,9 @@ class WenShu:
     def __init__(self):
         self.index = 1
         #self.user_agent = 'Mozilla/5.0 (Linux; Android 4.1.1; Nexus 7 Build/JRO03D) AppleWebKit/535.19 (KHTML, like Gecko) Chrome/18.0.1025.166  Safari/535.19'
-        self.user_agent = 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.130 Safari/537.36'
-        #self.user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
-        self.headers = {'User-Agent':self.user_agent }
+        #self.user_agent = 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.130 Safari/537.36'
+        self.user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
+        self.headers = {'User-Agent':self.user_agent, 'Connection':'close'}
         self.search_criteria = ''
         self.download_conditions = ''
         self.item_in_page = '20'
@@ -115,7 +115,7 @@ class WenShu:
         condition = urllib.parse.quote(self.download_conditions)
         data = {'conditions':condition,'docIds':docIds,'keyCode':''}
         ####################################
-        proxies = {"http":"http://119.5.1.6:808"}
+        #proxies = {"http":"http://218.64.92.190:808"}
         #proxy_support = requests.ProxyHandler(proxy)
         #opener = requests.build_opener(proxy_support)
         #opener.addheaders = [('User-Agent','Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36')]
@@ -133,64 +133,94 @@ class WenShu:
                 word_doc.write(r.content)
             
     def getTotalItemNumber(self):
-        #print(self.data)
-        r = requests.post(self.search_url, headers=self.headers, data=self.data)
-        raw = r.json()
-        if raw == 'remind':
-            self.handleValidateCode()
-            # re-send requests
+        attempts = 0
+        pattern = re.compile('"Count":"([0-9]+)"', re.S)
+        while attempts < 10:
+            if attempts > 6:
+                self.handleValidateCode()
+ 
             r = requests.post(self.search_url, headers=self.headers, data=self.data)
             raw = r.json()
-        pattern = re.compile('"Count":"([0-9]+)"', re.S)
-        total_number = re.findall(pattern, raw)
-        self.total_items = int(total_number[0]) if total_number else 0
-    
+            total_number = re.findall(pattern, raw)
+            if total_number:
+                if int(total_number[0]) == 0:
+                    print("total number is 0")
+                    print("attempts %s" % attempts)
+                else:
+                    self.total_items = int(total_number[0]) if total_number else 0
+                    break
+            attempts += 1
+            
+            
     def getCaseList(self, start_items, total_items):
         name_list = []
         date_list = []
         id_list = []
         case_id_list = []
-        case_brief_list = []
+        brief_list = []
+        procedure_list = []
+        court_list = []
         max_page = (total_items // int(self.item_in_page)) + 1
         #start_page = (start_items // int(self.item_in_page)) + 1
         #print('Get case info from %s to %s'%(start_page, max_page))
         #sys.exit(0)
+        pattern_name = re.compile('"案件名称":"(.*?)"', re.S)
+        pattern_id = re.compile('"文书ID":"(.*?)"', re.S)
+        pattern_date = re.compile('"裁判日期":"(.*?)"', re.S)
+        pattern_case_id = re.compile('"案号":"(.*?)"', re.S)
+        pattern_brief = re.compile('"裁判要旨段原文":"(.*?)"', re.S)
+            
+        pattern_procedure = re.compile('"审判程序":"(.*?)"', re.S)
+        pattern_court = re.compile('"法院名称":"(.*?)"', re.S)
+            
         for index in range(1, max_page + 1):
         #for index in range(1, 3):
-            print("Get Case list on page %s" % index)
-            self.data['Index'] = index
-            #print(self.data)
-            r = requests.post(self.search_url, headers=self.headers, data=self.data)
-            try:
-                raw = r.json()
-                #print(raw)
-            except:
-                print('exception catch, re-send request.')
-                self.handleValidateCode()
+        
+            attempts = 0
+            while attempts < 10:
+                if attempts > 6:
+                    self.handleValidateCode()
+                 
+                print("Get Case list on page %s" % index)
+                print("retry %s" % attempts)
+                self.data['Index'] = index
                 r = requests.post(self.search_url, headers=self.headers, data=self.data)
-                raw = r.json()
-            if raw == 'remind':
-                self.handleValidateCode()
-                # If blocked by website, hold and refresh manually, and then re-send requests
-                r = requests.post(self.search_url, headers=self.headers, data=self.data)
-                raw = r.json()
-            pattern_name = re.compile('"案件名称":"(.*?)"', re.S)
-            pattern_id = re.compile('"文书ID":"(.*?)"', re.S)
-            pattern_date = re.compile('"裁判日期":"(.*?)"', re.S)
-            pattern_case_id = re.compile('"案号":"(.*?)"', re.S)
-            pattern_brief = re.compile('"裁判要旨段原文":"(.*?)"', re.S)
+                try:
+                    raw = r.json()
+                except:
+                    print('exception catch, re-send request.')
+                    
+#               r = requests.post(self.search_url, headers=self.headers, data=self.data)
+#               raw = r.json()
+#           if raw == 'remind':
+#               self.handleValidateCode()
+#               # If blocked by website, hold and refresh manually, and then re-send requests
+#               r = requests.post(self.search_url, headers=self.headers, data=self.data)
+#               raw = r.json()
+                if not re.findall(pattern_name, raw):
+                    print(raw)
+                    #self.handleValidateCode()
+                    attempts += 1
+                else:
+                    break
+            
+            
             name_list += re.findall(pattern_name, raw)
             id_list += re.findall(pattern_id, raw)
             date_list += re.findall(pattern_date,raw)
             case_id_list += re.findall(pattern_case_id, raw)
-            case_brief_list += re.findall(pattern_brief, raw)
+            brief_list += re.findall(pattern_brief, raw)
+            procedure_list += re.findall(pattern_procedure, raw)
+            court_list +=  re.findall(pattern_court, raw)
             time.sleep(1)
             #print(case_id_list)
         self.case['name'] = name_list
         self.case['doc_id'] = id_list
         self.case['date'] = date_list
         self.case['case_id'] = case_id_list
-        self.case['brief'] = case_brief_list
+        self.case['brief'] = brief_list
+        self.case['procedure'] = procedure_list
+        self.case['court'] = court_list
 
         
     def getHomePage(self, url):
