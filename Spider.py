@@ -7,61 +7,7 @@ import time
 import sys
 from docx import Document
 from bs4 import BeautifulSoup
-
-class DocAnalyser:
-    def __init__(self):
-        self.content = ''
-        self.bhr_list = []
-        self.zdbhr_list = []
-        self.bgr_list = []
-    
-    def analyseDoc(self, name):
-        self.readDoc(name)
-        self.getWeituoBianhuren()
-        self.getZhidingBianhuren()
-        self.getBeigaoren()
-        self.getGroupBianhuren()
-        
-    def readDoc(self, doc_name):
-        try:
-            document = Document(doc_name) if doc_name else sys.exit(0)
-        except:
-            print("Document %s is invalid" % doc_name)
-            
-    #   读取每段资料
-        l = [paragraph.text for paragraph in document.paragraphs]
-        s = ''.join(str(e) for e in l)
-        self.content = s
-
-    #取得委托辩护人姓名
-    def getWeituoBianhuren(self):
-        #print(self.content)
-        bhr_list = re.findall('(?<!指定)辩护人\w{2,4}，\w+律师', self.content)
-        for i in range(len(bhr_list)):
-            bhr = re.search('辩护人\w{2,4}(?=，)', bhr_list[i])
-            bhr_list[i] = bhr.group()
-        print('委托辩护人  %s'%bhr_list)
-
-
-    def getZhidingBianhuren(self):
-        zdbhr_list = re.findall('指定辩护人\w{2,4}，\w+律师', self.content)
-        for i in range(len(zdbhr_list)):
-            zdbhr = re.search('指定辩护人\w{2,4}(?=，)', zdbhr_list[i])
-            zdbhr_list[i] = zdbhr.group()
-        print('指定辩护人  %s'%zdbhr_list)
-
-        
-    def getBeigaoren(self):
-        bgr_list = re.findall('被告人）?\w{2,4}，[男|女|别]', self.content)
-        for i in range(len(bgr_list)):
-            bgr = re.search('被告人）?\w{2,4}(?=，)', bgr_list[i])
-            bgr_list[i] = bgr.group().replace('）', '')
-        print('被告人  %s'%bgr_list)
-        
-    def getGroupBianhuren(self):    
-        gbhr = re.findall('(辩护人\w{2,4}，\w+律师.{1,3}辩护人\w{2,4}，\w+律师)', self.content)
-        print(gbhr)
-        
+     
         
 class WenShu:
     def __init__(self):
@@ -74,6 +20,7 @@ class WenShu:
         self.download_conditions = ''
         self.item_in_page = '20'
         self.total_items = ''
+        self.doc_content = ''
         self.case = {}
         self.search_url = 'http://wenshu.court.gov.cn/List/ListContent'
         self.download_url = 'http://wenshu.court.gov.cn/CreateContentJS/CreateListDocZip.aspx?action=1'
@@ -84,6 +31,10 @@ class WenShu:
                      'Direction':'asc'}
 
 
+    def _handleValidateCode(self):
+        input("Refresh the Page and Enter:")
+               
+                     
     def setSearchCriteria(self, search_criteria):
         self.search_criteria = search_criteria
         self.data = {'Param':self.search_criteria,\
@@ -97,58 +48,41 @@ class WenShu:
         self.download_conditions = self.search_criteria.replace(':', '为').replace(',', '且')
 
 
-    def getContent(self, maxPage):
-        for index in range(1, maxPage+1):
-            print("Page %s" % index)
-            self.LoadPageContent(index)
-            self.downloadDocument()
-            p = [self.date, self.case_id, self.title, self.doc_id, self.brief, self.procedure, self.court]
-            with open('results.csv', 'a') as f:
-                f.write(codecs.BOM_UTF8)
-                writer = csv.writer(f)
-                for item in zip(*p):
-                    writer.writerow(item)
-
-                    
     def downloadDocument(self, path, name, id, date):
         docIds = id + '|' + name + '|' + date
         condition = urllib.parse.quote(self.download_conditions)
         data = {'conditions':condition,'docIds':docIds,'keyCode':''}
-        ####################################
         #proxies = {"http":"http://218.64.92.190:808"}
-        #proxy_support = requests.ProxyHandler(proxy)
-        #opener = requests.build_opener(proxy_support)
-        #opener.addheaders = [('User-Agent','Mozilla/5.0 (Windows NT 6.1; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/56.0.2924.87 Safari/537.36')]
-        #requests.install_opener(opener)
-        ####################################
-        #with requests.Session() as s:
-        #    r = s.post(self.download_url, headers = self.headers, data = data)
         print("Downloading case %s"%(name))
         #r = requests.post(self.download_url, headers = self.headers, data = data, proxies=proxies)
         r = requests.post(self.download_url, headers = self.headers, data = data)
         if r.status_code != 200: 
             print(r.status_code)
         else:
-            with open(path + name + date + ".txt", "wb") as word_doc:
-                word_doc.write(r.content)
+            self.doc_content = r.content
+            
             
     def getTotalItemNumber(self):
         attempts = 0
         pattern = re.compile('"Count":"([0-9]+)"', re.S)
         while attempts < 10:
             if attempts > 6:
-                self.handleValidateCode()
+                self._handleValidateCode()
  
             r = requests.post(self.search_url, headers=self.headers, data=self.data)
-            raw = r.json()
-            total_number = re.findall(pattern, raw)
-            if total_number:
-                if int(total_number[0]) == 0:
-                    print("total number is 0")
-                    print("attempts %s" % attempts)
-                else:
-                    self.total_items = int(total_number[0]) if total_number else 0
-                    break
+            try:
+                raw = r.json()
+                total_number = re.findall(pattern, raw)
+                if total_number:
+                    if int(total_number[0]) == 0:
+                        print("total number is 0")
+                        print("attempts %s" % attempts)
+                    else:
+                        self.total_items = int(total_number[0]) if total_number else 0
+                        break
+            except:
+                print('Exception catch, re-send request.')    
+                    
             attempts += 1
             
             
@@ -161,25 +95,20 @@ class WenShu:
         procedure_list = []
         court_list = []
         max_page = (total_items // int(self.item_in_page)) + 1
-        #start_page = (start_items // int(self.item_in_page)) + 1
-        #print('Get case info from %s to %s'%(start_page, max_page))
-        #sys.exit(0)
         pattern_name = re.compile('"案件名称":"(.*?)"', re.S)
         pattern_id = re.compile('"文书ID":"(.*?)"', re.S)
         pattern_date = re.compile('"裁判日期":"(.*?)"', re.S)
         pattern_case_id = re.compile('"案号":"(.*?)"', re.S)
         pattern_brief = re.compile('"裁判要旨段原文":"(.*?)"', re.S)
-            
         pattern_procedure = re.compile('"审判程序":"(.*?)"', re.S)
         pattern_court = re.compile('"法院名称":"(.*?)"', re.S)
             
         for index in range(1, max_page + 1):
         #for index in range(1, 3):
-        
             attempts = 0
             while attempts < 10:
                 if attempts > 6:
-                    self.handleValidateCode()
+                    self._handleValidateCode()
                  
                 print("Get Case list on page %s" % index)
                 print("retry %s" % attempts)
@@ -187,23 +116,13 @@ class WenShu:
                 r = requests.post(self.search_url, headers=self.headers, data=self.data)
                 try:
                     raw = r.json()
+                    if not re.findall(pattern_name, raw):
+                        print(raw)
+                    else:
+                        break
                 except:
-                    print('exception catch, re-send request.')
-                    
-#               r = requests.post(self.search_url, headers=self.headers, data=self.data)
-#               raw = r.json()
-#           if raw == 'remind':
-#               self.handleValidateCode()
-#               # If blocked by website, hold and refresh manually, and then re-send requests
-#               r = requests.post(self.search_url, headers=self.headers, data=self.data)
-#               raw = r.json()
-                if not re.findall(pattern_name, raw):
-                    print(raw)
-                    #self.handleValidateCode()
-                    attempts += 1
-                else:
-                    break
-            
+                    print('Exception catch, re-send request.')
+                attempts += 1
             
             name_list += re.findall(pattern_name, raw)
             id_list += re.findall(pattern_id, raw)
@@ -221,43 +140,3 @@ class WenShu:
         self.case['brief'] = brief_list
         self.case['procedure'] = procedure_list
         self.case['court'] = court_list
-
-        
-    def getHomePage(self, url):
-        res = requests.get(url)
-        res.encoding = 'utf-8'
-        print(res.text)
-    
-    def handleValidateCode(self):
-        input("Refresh the Page and Enter:")
-    
-    
-    def LoadPageContent(self, index):
-        #记录开始时间
-        begin_time = datetime.datetime.now()
-        url = 'http://wenshu.court.gov.cn/List/ListContent'
-        self.data['Index'] = index
-        r = requests.post(url, headers = self.headers, data = self.data)
-        raw=r.json()
-
-        pattern1 = re.compile('"裁判日期":"(.*?)"', re.S)
-        self.date = re.findall(pattern1,raw.encode("utf-8"))
-        
-        pattern2 = re.compile('"案号":"(.*?)"', re.S)
-        self.case_id = re.findall(pattern2,raw.encode("utf-8"))
-        
-        pattern3 = re.compile('"案件名称":"(.*?)"', re.S)
-        self.title = re.findall(pattern3,raw.encode("utf-8"))
-        
-        pattern4 = re.compile('"文书ID":"(.*?)"', re.S)
-        self.doc_id = re.findall(pattern4,raw.encode("utf-8"))
-        
-        pattern5 = re.compile('"裁判要旨段原文":"(.*?)"', re.S)
-        self.brief = re.findall(pattern5,raw.encode("utf-8"))
-        
-        pattern6 = re.compile('"审判程序":"(.*?)"', re.S)
-        self.procedure = re.findall(pattern6,raw.encode("utf-8"))
-        
-        pattern7 = re.compile('"法院名称":"(.*?)"', re.S)
-        self.court = re.findall(pattern7,raw.encode("utf-8"))
-

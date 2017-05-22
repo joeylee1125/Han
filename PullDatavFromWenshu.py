@@ -30,7 +30,6 @@ def download_case(wenshu, case_matrix, court):
     if not os.path.exists(path):
         os.makedirs(path)
     for i in range(row_count):
-        
         print("%s/%s"%(i, row_count))
         file_name = path + case_matrix[col_name][i] + case_matrix[col_date][i] + '.txt'
         if not os.path.exists(file_name):
@@ -38,6 +37,8 @@ def download_case(wenshu, case_matrix, court):
                                     case_matrix[col_name][i],
                                     case_matrix[col_id][i],
                                     case_matrix[col_date][i])
+            with open(file_name, "wb") as word_doc:
+                word_doc.write(wenshu.content)
             time.sleep(1)
         elif os.path.getsize(file_name) < 20000:
             with codecs.open(file_name, "r", "utf-8") as f:
@@ -46,7 +47,9 @@ def download_case(wenshu, case_matrix, court):
                                             case_matrix[col_name][i],
                                             case_matrix[col_id][i],
                                             case_matrix[col_date][i])
-                    time.sleep(1)                        
+                    with open(file_name, "wb") as word_doc:
+                        word_doc.write(wenshu.content)
+            time.sleep(1)                        
         else:
             pass
              
