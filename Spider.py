@@ -66,8 +66,8 @@ class WenShu:
         attempts = 0
         pattern = re.compile('"Count":"([0-9]+)"', re.S)
         while attempts < 10:
-            if attempts > 6:
-                self._handleValidateCode()
+            #if attempts > 6:
+            #    self._handleValidateCode()
  
             r = requests.post(self.search_url, headers=self.headers, data=self.data)
             try:
@@ -86,7 +86,7 @@ class WenShu:
             attempts += 1
             
             
-    def getCaseList(self, start_items, total_items):
+    def getCaseList(self, total_items):
         name_list = []
         date_list = []
         id_list = []
@@ -94,7 +94,9 @@ class WenShu:
         brief_list = []
         procedure_list = []
         court_list = []
-        max_page = (total_items // int(self.item_in_page)) + 1
+        max_page = total_items // int(self.item_in_page)
+        if total_items % int(self.item_in_page):
+            max_page += 1
         pattern_name = re.compile('"案件名称":"(.*?)"', re.S)
         pattern_id = re.compile('"文书ID":"(.*?)"', re.S)
         pattern_date = re.compile('"裁判日期":"(.*?)"', re.S)
@@ -107,8 +109,8 @@ class WenShu:
         #for index in range(1, 3):
             attempts = 0
             while attempts < 10:
-                if attempts > 6:
-                    self._handleValidateCode()
+            #    if attempts > 6:
+            #        self._handleValidateCode()
                  
                 print("Get Case list on page %s" % index)
                 print("retry %s" % attempts)
