@@ -65,26 +65,23 @@ class WenShu:
     def getTotalItemNumber(self):
         attempts = 0
         pattern = re.compile('"Count":"([0-9]+)"', re.S)
-        while attempts < 10:
-            #if attempts > 6:
-            #    self._handleValidateCode()
+        while attempts < 7:
+            if attempts > 3:
+                self._handleValidateCode()
  
             r = requests.post(self.search_url, headers=self.headers, data=self.data)
             try:
                 raw = r.json()
                 total_number = re.findall(pattern, raw)
                 if total_number:
-                    if int(total_number[0]) == 0:
-                        print("total number is 0")
-                        print("attempts %s" % attempts)
-                    else:
-                        self.total_items = int(total_number[0]) if total_number else 0
-                        break
+                    self.total_items = int(total_number[0])
+                    break
             except:
                 print('Exception catch, re-send request.')    
-                    
+            print('attempts %s' % attempts)        
             attempts += 1
-            
+        #self.total_items = 0
+        
             
     def getCaseList(self, total_items):
         name_list = []
@@ -94,7 +91,7 @@ class WenShu:
         brief_list = []
         procedure_list = []
         court_list = []
-        max_page = total_items // int(self.item_in_page)
+        max_page = int(total_items) // int(self.item_in_page)
         if total_items % int(self.item_in_page):
             max_page += 1
         pattern_name = re.compile('"案件名称":"(.*?)"', re.S)
@@ -108,9 +105,9 @@ class WenShu:
         for index in range(1, max_page + 1):
         #for index in range(1, 3):
             attempts = 0
-            while attempts < 10:
-            #    if attempts > 6:
-            #        self._handleValidateCode()
+            while attempts < 7:
+                if attempts > 3:
+                    self._handleValidateCode()
                  
                 print("Get Case list on page %s" % index)
                 print("retry %s" % attempts)

@@ -67,10 +67,13 @@ def validate_doc(doc_name):
     return True if analyser.bgrt else False
     
     
-def validate_path(path_2_folder):
-    if not os.path.exists(path_2_folder):
-        os.makedirs(path_2_folder)
+def validate_path(folder):
+    if not os.path.exists(folder):
+        os.makedirs(folder)
         
+        
+def count_files(folder):
+    return len(os.listdir(folder))
     
 def download_invalid(court):
     case_matrix = read_csv('C:\\Users\\lij37\\Code\\Summer\\2016\\' + court + '_valid')

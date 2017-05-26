@@ -80,7 +80,7 @@ def bhr_test(doc_content):
     
 
 def bgr_test(doc_content):    
-    return re.search('被告人', doc_content)
+    return re.search('被告', doc_content)
     
     
     

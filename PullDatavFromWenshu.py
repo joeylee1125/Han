@@ -7,6 +7,7 @@ import csv
 import argparse
 import codecs
 
+from shutil import copytree
 from shutil import copyfile
 from docx import Document
 
@@ -28,14 +29,15 @@ def validate_case(path, court):
     case_matrix['valid'] = ['N'] * len(case_matrix['name'])
     
     analyser = DocAnalyser.DocAnalyser()
-    for i in range(len(case_matrix['name'])):
-        doc_name = path + court + '\\' + case_matrix['name'][i] + case_matrix['date'][i] + '.docx'
+    #for i in range(len(case_matrix['name'])):
+    for i, case_name in enumerate(case_matrix['name']):
+        doc_name = path + court + '\\' + case_name + case_matrix['date'][i] + '.docx'
         FileUtils.valid_doc(file_name)
     
         if analyser.bgrt:
             case_matrix['valid'][i] = 'Y'
         else:
-            print("%s is invalid" % case_matrix['name'][i])
+            print("%s is invalid" % case_name)
     FileUtils.dump2csv(case_matrix, csv_file_valid)
 
     
@@ -48,21 +50,18 @@ def download_case(search_criteria, court, path):
     wenshu = Spider.WenShu()
     wenshu.setSearchCriteria(search_criteria)
     
-    col_name = 'name'
-    col_id = 'doc_id'
-    col_date = 'date'
-    row_count = len(case_matrix[col_name])
-    download_list = ['Y'] * row_count
+    row_count = len(case_matrix['name'])
 
     FileUtils.validate_path(folder)
-    for i in range(row_count):
+    #for i in range(row_count):
+    for i, case_name in enumerate(case_matrix['name']):
         print("%s/%s"%(i, row_count))
-        file_name = folder + '\\' + case_matrix[col_name][i] + case_matrix[col_date][i] + '.txt'
+        file_name = folder + '\\' + case_name + case_matrix['date'][i] + '.txt'
         if not os.path.exists(file_name):
             wenshu.downloadDocument(path,
-                                    case_matrix[col_name][i],
-                                    case_matrix[col_id][i],
-                                    case_matrix[col_date][i])
+                                    case_matrix['name'][i],
+                                    case_matrix['doc_id'][i],
+                                    case_matrix['date'][i])
             with open(file_name, "wb") as word_doc:
                 word_doc.write(wenshu.doc_content)
             time.sleep(1)
@@ -70,42 +69,33 @@ def download_case(search_criteria, court, path):
             with codecs.open(file_name, "r", "utf-8") as f:
                 if not 'DOC' in f.readline():
                     wenshu.downloadDocument(path,
-                                            case_matrix[col_name][i],
-                                            case_matrix[col_id][i],
-                                            case_matrix[col_date][i])
+                                            case_matrix['name'][i],
+                                            case_matrix['doc_id'][i],
+                                            case_matrix['date'][i])
                     with open(file_name, "wb") as word_doc:
                         word_doc.write(wenshu.doc_content)
             time.sleep(1)                        
         else:
             pass
-             
-    return download_list
-    
+                 
     
 def download_invalid(search_criteria, court, path):
     folder = path + court
     csv_file = path + court + '_valid.csv'
     temp_folder = path + court + '_TEMP'
     
-    
     case_matrix = FileUtils.read_csv(csv_file)
     wenshu = Spider.WenShu()
     wenshu.setSearchCriteria(search_criteria)
-    
-    col_name = 'name'
-    col_id = 'doc_id'
-    col_date = 'date'
-    row_count = len(case_matrix[col_name])
-    download_list = ['Y'] * row_count
 
-    for i in range(row_count):
-        print("%s/%s"%(i, row_count))
-        file_name = folder + '\\' + case_matrix[col_name][i] + case_matrix[col_date][i] + '.txt'
+    #for i in range(row_count):
+    for i, case_name in enumerate(case_matrix['name']):
+        file_name = folder + '\\' + case_name + case_matrix['date'][i] + '.txt'
         if case_matrix['valid'] == 'N':
             wenshu.downloadDocument(path,
-                                    case_matrix[col_name][i],
-                                    case_matrix[col_id][i],
-                                    case_matrix[col_date][i])
+                                    case_matrix['name'][i],
+                                    case_matrix['doc_id'][i],
+                                    case_matrix['date'][i])
             with open(file_name, "wb") as word_doc:
                 word_doc.write(wenshu.doc_content)
             time.sleep(1)
@@ -133,7 +123,11 @@ def download_caselist(search_criteria, csv_file):
     wenshu.setSearchCriteria(search_criteria)
     wenshu.getTotalItemNumber()
     print("Total case number is %s" % wenshu.total_items)
-    get_case_info(wenshu)
+    if wenshu.total_items:
+        get_case_info(wenshu)
+    else:
+        print("Failed to get total items.")
+        sys.exit(1)
     case_matrix['name'] = wenshu.case['name']
     case_matrix['doc_id'] = wenshu.case['doc_id']
     case_matrix['date'] = wenshu.case['date']
@@ -183,12 +177,23 @@ def main():
     desc = "Select a phase to run"
     parser = argparse.ArgumentParser(description=desc)
     parser.add_argument('-d', '--download', action='store_true')
+    parser.add_argument('-a', '--analyse', action='store_true')
+    parser.add_argument('-t', '--transfer', action='store_true')
+    
+    
+    parser.add_argument('-y', '--year', action='store')
     parser.add_argument('-c', '--court', action='store')
-    parser.add_argument('-r', '--region', action='store')    
+    parser.add_argument('-r', '--region', action='store')
+    parser.add_argument('--count', action='store_true')
+    parser.add_argument('--csv', action='store_true')
+    
     args = parser.parse_args()
     region = args.region
+    year = args.year
     
-    path = 'C:\\Users\\lij37\\Code\\Han2014\\'
+    path = 'C:\\Users\\lij37\\Code\\Han' + year + '\\'
+    #path = 'C:\\Users\\lij37\\Code\\Summer\\2016\\'
+    
     
     FileUtils.validate_path(path)
     #search_criteria = "案件类型:刑事案件,审判程序:一审,法院地域:四川省,裁判年份:2016,文书类型:判决书," + "基层法院:" + args.court
@@ -196,16 +201,17 @@ def main():
     if args.download:
         if args.region:
             for court in CourtList.court_list[region]:
-                search_criteria = "案件类型:刑事案件,审判程序:一审,法院地域:四川省,裁判年份:2014,文书类型:判决书," + "基层法院:" + court
+                search_criteria = "案件类型:刑事案件,审判程序:一审,法院地域:四川省,裁判年份:" + year +",文书类型:判决书," + "基层法院:" + court
                 csv_file = path + court + '.csv'
                 case_folder = path + court
-                if not os.path.exists(csv_file):
-                    download_caselist(search_criteria, csv_file)
-                #else:
-                #    download_case(search_criteria, court, path)    
+                if args.csv:
+                    if not os.path.exists(csv_file):
+                        download_caselist(search_criteria, csv_file)
+                else:
+                    download_case(search_criteria, court, path)    
         elif args.court:
             court = args.court
-            search_criteria = "案件类型:刑事案件,审判程序:一审,法院地域:四川省,裁判年份:2014,文书类型:判决书," + "基层法院:" + court
+            search_criteria = "案件类型:刑事案件,审判程序:一审,法院地域:四川省,裁判年份:" + year +",文书类型:判决书," + "基层法院:" + court
             csv_file = path + court + '.csv'
             case_folder = path + court
             if not os.path.exists(csv_file):
@@ -213,9 +219,38 @@ def main():
             else:
                 download_case(search_criteria, court, path)
         else:
-            print('oooOooooooooooooops')
-            
+            for key in CourtList.court_list:
+                for court in CourtList.court_list[key]:
+                    search_criteria = "案件类型:刑事案件,审判程序:一审,法院地域:四川省,裁判年份:" + year +",文书类型:判决书," + "基层法院:" + court
+                    csv_file = path + court + '.csv'
+                    case_folder = path + court
+                    if args.csv:
+                        if not os.path.exists(csv_file):
+                            download_caselist(search_criteria, csv_file)
+                    else:
+                        download_case(search_criteria, court, path)
+    if args.count:
+        file_count = 0
+        for key in CourtList.court_list:
+            for court in CourtList.court_list[key]:
+                print("Total number of docs in %s is %s" % (path + court, FileUtils.count_files(path + court)))
+                file_count += FileUtils.count_files(path + court)
+        print("Total number in %s is %s" % (path, file_count))
     
+    
+    if args.transfer:
+        for key in CourtList.court_list:    
+            for court in CourtList.court_list[key]:
+                print('transfer txt to doc in folder %s' % (path + court))
+                FileUtils.transfer2doc(path + court)
+    
+    if args.analyse:
+        for key in CourtList.court_list:    
+            for court in CourtList.court_list[key]:
+                src = path + 'Download_' + court
+                dst = path  + court
+                print('copy %s to %s' % (src, dst))
+                copytree(src, dst)
     
 if __name__ == "__main__":
     main()
