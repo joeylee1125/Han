@@ -12,9 +12,9 @@ from bs4 import BeautifulSoup
 class WenShu:
     def __init__(self):
         self.index = 1
-        #self.user_agent = 'Mozilla/5.0 (Linux; Android 4.1.1; Nexus 7 Build/JRO03D) AppleWebKit/535.19 (KHTML, like Gecko) Chrome/18.0.1025.166  Safari/535.19'
+        self.user_agent = 'Mozilla/5.0 (Linux; Android 4.1.1; Nexus 7 Build/JRO03D) AppleWebKit/535.19 (KHTML, like Gecko) Chrome/18.0.1025.166  Safari/535.19'
         #self.user_agent = 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.130 Safari/537.36'
-        self.user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
+        #self.user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
         self.headers = {'User-Agent':self.user_agent, 'Connection':'close'}
         self.search_criteria = ''
         self.download_conditions = ''
@@ -52,7 +52,7 @@ class WenShu:
         docIds = id + '|' + name + '|' + date
         condition = urllib.parse.quote(self.download_conditions)
         data = {'conditions':condition,'docIds':docIds,'keyCode':''}
-        #proxies = {"http":"http://218.64.92.190:808"}
+        proxies = {"http":"http://116.226.90.12:808"}
         print("Downloading case %s"%(name))
         #r = requests.post(self.download_url, headers = self.headers, data = data, proxies=proxies)
         r = requests.post(self.download_url, headers = self.headers, data = data)
