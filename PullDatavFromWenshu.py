@@ -21,11 +21,13 @@ import DocAnalyser
 def get_case_info(wenshu):
     wenshu.getCaseList(wenshu.total_items)
     
-    
+
+            
+            
 def validate_case(path, court):
     csv_file = path + court + '.csv'
     csv_file_valid = path + court + '_valid.csv'
-    case_matrix = read_csv(csv_file)
+    case_matrix = FileUtils.read_csv(csv_file)
     case_matrix['valid'] = ['N'] * len(case_matrix['name'])
     
     analyser = DocAnalyser.DocAnalyser()
@@ -40,6 +42,60 @@ def validate_case(path, court):
             print("%s is invalid" % case_name)
     FileUtils.dump2csv(case_matrix, csv_file_valid)
 
+
+def download_case_in_zip(search_criteria, court, path):
+    folder = path + court
+    csv_file = path + court + '.csv'
+    print('Read case list from %s' % csv_file)
+    # Read csv file and get case list.
+    case_matrix = FileUtils.read_csv(csv_file)
+    wenshu = Spider.WenShu()
+    wenshu.setSearchCriteria(search_criteria)
+    
+    row_count = len(case_matrix['name'])
+
+    FileUtils.validate_path(folder)
+    if row_count % 20 is 0:
+        total_page = row_count // 20
+        last_page = 20
+    else:
+        total_page = (row_count // 20) + 1  
+        last_page = row_count % 20
+    for page in range(total_page):
+        
+        file_name = folder + '\\page_' + str(page) + '.zip'
+        if not (page + 1) == total_page:
+            case_in_page = 20
+        else:
+            case_in_page = last_page
+        name_list = [''] * case_in_page
+        id_list = [''] * case_in_page
+        date_list = [''] * case_in_page
+        print("Download page %s/%s" % (page + 1, total_page))
+        for c in range(case_in_page):
+            name_list[c] = case_matrix['name'][page + c]
+            id_list[c] = case_matrix['doc_id'][page + c]
+            date_list[c] = case_matrix['date'][page + c]
+        if not os.path.exists(file_name):
+            wenshu.downloadDocumentZip(path,
+                                       name_list,
+                                       id_list,
+                                       date_list)
+            with open(file_name, "wb") as zipfile:
+                zipfile.write(wenshu.doc_content)
+            time.sleep(1)
+        elif os.path.getsize(file_name) < 30000:
+            wenshu.downloadDocumentZip(path,
+                                       name_list,
+                                       id_list,
+                                       date_list)
+            with open(file_name, "wb") as zipfile:
+                zipfile.write(wenshu.doc_content)
+            time.sleep(1)
+        else:
+            pass
+        
+    
     
 def download_case(search_criteria, court, path):
     folder = path + court
@@ -111,7 +167,58 @@ def download_invalid(search_criteria, court, path):
             
             
 def copy_files():
-    pass
+    pass    
+    
+
+def validate_csv(path, year):
+    csv_file = path + year + '_brief.csv'
+    if not os.path.exists(csv_file):
+        print("%s not found, please run overview first" % csv_file)
+    else:
+        br_matrix = FileUtils.read_csv(csv_file)
+        c = 0
+        for idx, court in enumerate(br_matrix['court']):
+            case_matrix = FileUtils.read_csv(path + court + '.csv')
+            if not (int(br_matrix['case_number'][idx]) == len(case_matrix['name'])):
+                    print("invalid csv file %s" % path + court + '.csv')
+                    print('total %s,   excel %s ' % (br_matrix['case_number'][idx], len(case_matrix['name'])))
+            #print(idx)    
+                
+                
+def get_total_number(path, year):
+    br_matrix = {}
+    c = 0
+    for key in CourtList.court_list:
+        for court in CourtList.court_list[key]:
+            c += 1
+    
+    br_matrix['court'] = [''] * c
+    br_matrix['case_number'] = [''] * c
+    c = 0
+    csv_file = path + year + '_brief.csv'
+    if not os.path.exists(csv_file):
+        FileUtils.dump2csv(br_matrix, csv_file)
+    else:
+        br_matrix = FileUtils.read_csv(csv_file)
+    wenshu = Spider.WenShu()
+    #FileUtils.dump2csv(br_matrix, csv_file)
+    for key in CourtList.court_list:
+        for court in CourtList.court_list[key]:
+            print(c)
+            if not br_matrix['court'][c]:
+                br_matrix = FileUtils.read_csv(csv_file)
+                print('Get total case number of court %s' % court)
+                search_criteria = "案件类型:刑事案件,审判程序:一审,法院地域:四川省,裁判年份:" + year +",文书类型:判决书," + "基层法院:" + court
+                wenshu.setSearchCriteria(search_criteria)
+                wenshu.getTotalItemNumber()
+                br_matrix['court'][c] = court
+                br_matrix['case_number'][c] = wenshu.total_items
+                #print(br_matrix)
+                print('Total case number of court %s in %s is %s' % (court, year, br_matrix['case_number'][c]))
+                FileUtils.dump2csv(br_matrix, csv_file)
+            c += 1
+
+    
     
 # Phase 1: Search and get 2nd case list,
 #          dump case name list into a csv file.
@@ -180,12 +287,15 @@ def main():
     parser.add_argument('-a', '--analyse', action='store_true')
     parser.add_argument('-t', '--transfer', action='store_true')
     
-    
+    parser.add_argument('-v', '--validate', action='store_true')
     parser.add_argument('-y', '--year', action='store')
     parser.add_argument('-c', '--court', action='store')
     parser.add_argument('-r', '--region', action='store')
     parser.add_argument('--count', action='store_true')
     parser.add_argument('--csv', action='store_true')
+    parser.add_argument('--overview', action='store_true')
+    parser.add_argument('--zip', action='store_true')
+    
     
     args = parser.parse_args()
     region = args.region
@@ -208,7 +318,10 @@ def main():
                     if not os.path.exists(csv_file):
                         download_caselist(search_criteria, csv_file)
                 else:
-                    download_case(search_criteria, court, path)    
+                    if args.zip:
+                        download_case_in_zip(search_criteria, court, path)
+                    else:
+                        download_case(search_criteria, court, path)    
         elif args.court:
             court = args.court
             search_criteria = "案件类型:刑事案件,审判程序:一审,法院地域:四川省,裁判年份:" + year +",文书类型:判决书," + "基层法院:" + court
@@ -217,7 +330,10 @@ def main():
             if not os.path.exists(csv_file):
                 download_caselist(search_criteria, csv_file)
             else:
-                download_case(search_criteria, court, path)
+                if args.zip:
+                    download_case_in_zip(search_criteria, court, path)
+                else:
+                    download_case(search_criteria, court, path)
         else:
             for key in CourtList.court_list:
                 for court in CourtList.court_list[key]:
@@ -228,13 +344,18 @@ def main():
                         if not os.path.exists(csv_file):
                             download_caselist(search_criteria, csv_file)
                     else:
-                        download_case(search_criteria, court, path)
+                        if args.zip:
+                            download_case_in_zip(search_criteria, court, path)
+                        else:
+                            download_case(search_criteria, court, path)
     if args.count:
+        file_list = os.listdir(path)
         file_count = 0
-        for key in CourtList.court_list:
-            for court in CourtList.court_list[key]:
-                print("Total number of docs in %s is %s" % (path + court, FileUtils.count_files(path + court)))
-                file_count += FileUtils.count_files(path + court)
+        for file in file_list:
+            if os.path.isdir(path + file):
+                count = FileUtils.count_files(path + file)
+                print("Total number of docs in %s is %s" % (path + file, count))
+                file_count += count
         print("Total number in %s is %s" % (path, file_count))
     
     
@@ -252,5 +373,14 @@ def main():
                 print('copy %s to %s' % (src, dst))
                 copytree(src, dst)
     
+    if args.validate:
+        if args.csv:
+            validate_csv(path, year)
+    
+    if args.overview:
+        get_total_number(path, year)            
+    
+    
+        
 if __name__ == "__main__":
     main()
