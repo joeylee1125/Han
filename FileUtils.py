@@ -22,7 +22,7 @@ def dump2csv(data_dict, file_name):
         writer = csv.writer(csvfile)
         writer.writerow(data_dict.keys())
         writer.writerows(zip(*data_dict.values()))
-
+        
 
 def read_csv(file_name):
     with open(file_name, encoding='utf-8_sig') as csvfile:
@@ -61,10 +61,10 @@ def copy_csv(src, dst):
     copyfile(src, dst)
 
     
-def validate_doc(doc_name):
-    analyser.read_doc(doc_name)
-    analyser.bgr_test()
-    return True if analyser.bgrt else False
+def move_file(src_folder, dst_folder):
+    file_list = os.listdir(src_folder)
+    for file in file_list:
+        move(src_folder + '\\' + file, dst_folder + '\\' + file)
     
     
 def validate_path(folder):
@@ -100,6 +100,13 @@ def download_invalid(court):
         if 'txt' in file:
             move(path + file, 'C:\\Users\\lij37\\Code\\Summer\\2016\\TEMP\\' + file[:-4] + '.doc')
     
+def add_cols_2_matrix(matrix, col_list):
+    key_list = list(matrix.keys())
+    for key in col_list:
+        matrix[key] = [''] * len(matrix[key_list[0]])
+    return matrix
+
+
     
 def main():    
     desc = ""

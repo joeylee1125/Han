@@ -73,12 +73,13 @@ class WenShu:
         #print(docIds)
         condition = urllib.parse.quote(self.download_conditions)
         data = {'conditions':condition,'docIds':docIds,'keyCode':''}
-        print("Downloading case %s"%(name_list[0]))
+        print("Downloading case %s"%(name_list))
         r = requests.post(self.download_url, headers = self.headers, data = data)
         if r.status_code != 200: 
             print(r.status_code)
         else:
             self.doc_content = r.content
+            #print(r.content)
         
             
     def getTotalItemNumber(self):
