@@ -289,69 +289,13 @@ class DocAnalyser:
         #print('')
         
         bl = []
-        for c in range(len(bgr_list)):
-            if '户籍' in bgr_list[c]:
-                pass
-                #print(bgr_list[c])
-            elif '自愿' in bgr_list[c]:
-                pass
-                #print(bgr_list[c])
-            elif '当庭' in bgr_list[c]:
-                pass
-                #print(bgr_list[c])
-            elif '曾经' in bgr_list[c]:
-                pass
-                #print(bgr_list[c])
-            elif '曾因' in bgr_list[c]:
-                pass
-                #print(bgr_list[c])
-            elif '文化' in bgr_list[c]:
-                pass
-                #print(bgr_list[c])
-            elif '商量' in bgr_list[c]:
-                pass
-                #print(bgr_list[c])
-            elif '尚有' in bgr_list[c]:
-                pass
-                #print(bgr_list[c])
-            elif '正当' in bgr_list[c]:
-                pass
-                #print(bgr_list[c])
-            elif '多次' in bgr_list[c]:
-                pass
-                #print(bgr_list[c])
-            elif '供述' in bgr_list[c]:
-                pass
-                #print(bgr_list[c])
-            elif '支付' in bgr_list[c]:
-                pass
-                #print(bgr_list[c])
-            elif '宣告' in bgr_list[c]:
-                pass
-                #print(bgr_list[c])
-            elif '宣读' in bgr_list[c]:
-                pass
-                #print(bgr_list[c])
-            elif '挡获' in bgr_list[c]:
-                pass
-                #print(bgr_list[c])
-            elif '常住' in bgr_list[c]:
-                pass
-                #print(bgr_list[c])
-            elif '采取' in bgr_list[c]:
-                pass
-                #print(bgr_list[c])
-            elif '此次' in bgr_list[c]:
-                pass
-                #print(bgr_list[c])
-            elif '容留' in bgr_list[c]:
-                pass
-                #print(bgr_list[c])
-            elif '共同' in bgr_list[c]:
-                pass
-                #print(bgr_list[c])    
-            else:    
-                bl.append(bgr_list[c])
+
+        for b in bgr_list:
+            for k in CourtList.not_a_name_list:
+                if k not in b:
+                    bl.append(b)
+                else:
+                    print(b)
             
         return bl
     
