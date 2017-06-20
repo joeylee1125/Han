@@ -13,11 +13,14 @@ class WenShu:
     def __init__(self):
         self.index = 1
         #self.user_agent = 'Mozilla/5.0 (Linux; Android 4.1.1; Nexus 7 Build/JRO03D) AppleWebKit/535.19 (KHTML, like Gecko) Chrome/18.0.1025.166  Safari/535.19'
-        #self.user_agent = 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.130 Safari/537.36'
-        self.user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
-        self.headers = {'User-Agent':self.user_agent, 'Connection':'close'}
+        self.user_agent = 'Mozilla/5.0 (Windows NT 6.1; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/44.0.2403.130 Safari/537.36'
+        #self.user_agent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/58.0.3029.110 Safari/537.36'
+        #self.headers = {'User-Agent':self.user_agent, 'Connection':'close'}
         #self.headers = {'User-Agent':self.user_agent}
+        
         self.search_criteria = ''
+        self.headers = ''
+        
         self.download_conditions = ''
         self.item_in_page = '20'
         self.total_items = ''
@@ -43,7 +46,10 @@ class WenShu:
                      'Page':self.item_in_page,\
                      'Order':'法院层级',\
                      'Direction':'asc'}
-
+        self.setDownloadConditions()
+        self.headers = {'User-Agent':self.user_agent,
+                        'Connection':'close'}
+    
 
     def setDownloadConditions(self):
         self.download_conditions = self.search_criteria.replace(':', '为').replace(',', '且')
@@ -57,12 +63,17 @@ class WenShu:
         #proxies = {"http":"http://115.231.175.68:8081"}
         print("Downloading case %s"%(name))
         #r = requests.post(self.download_url, headers = self.headers, data = data, proxies=proxies)
+        #print(self.headers)
         r = requests.post(self.download_url, headers = self.headers, data = data)
-        if r.status_code != 200: 
-            print(r.status_code)
-        else:
+        if r.status_code == 200: 
             self.doc_content = r.content
-            
+        elif r.status_code == 202:
+            print(r.status_code)
+            print(r.reason)
+            print(r.json)
+            time.sleep(100)
+        else:
+            print(r.status_code)
             
     def downloadDocumentZip(self, path, name_list, id_list, date_list):        
         docIds = ''

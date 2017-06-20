@@ -44,9 +44,14 @@ def calculate_bh_rate_2(case_matrix, procedure=None):
     for i in range(count):
         if case_matrix['procedure'][i] == procedure:
             bgr_n += int(case_matrix['bgr_n'][i])
-            bhr_n += int(case_matrix['wtbhr_n'][i])
-            bhr_n += int(case_matrix['zdbhr_n'][i])
             gbhr_n += int(case_matrix['gbhr_n'][i])
+            if int(case_matrix['wtbhr_n'][i]) == 0 and int(case_matrix['zdbhr_n'][i]) == 0 and int(case_matrix['sws_n'][i]) != 0:
+                bhr_n += int(case_matrix['sws_n'][i])
+            else:
+                bhr_n += int(case_matrix['wtbhr_n'][i])
+                bhr_n += int(case_matrix['zdbhr_n'][i])
+            
+            
     
     
     print('辩护人 %s  辩护人组%s 被告人 %s' % (bhr_n, gbhr_n, bgr_n))
@@ -92,10 +97,21 @@ def calculate_bh_rate(case_matrix, zm=None):
     bhr_n = 0
     gbhr_n = 0
     for i in range(count):
+        #print(i)
+    #    print('')
         if case_matrix['match'][i] == 'Y':
+            
             bgr_n += int(case_matrix['bgr_n'][i])
-            bhr_n += int(case_matrix['wtbhr_n'][i])
-            bhr_n += int(case_matrix['zdbhr_n'][i])
+            #print('bgr %s'%case_matrix['bgr_n'][i])
+            #print('bgr_n %s'%bgr_n)
+            if int(case_matrix['wtbhr_n'][i]) == 0 and int(case_matrix['zdbhr_n'][i]) == 0 and int(case_matrix['sws_n'][i]) != 0:
+                bhr_n += int(case_matrix['sws_n'][i])
+            else:
+                bhr_n += int(case_matrix['wtbhr_n'][i])
+                bhr_n += int(case_matrix['zdbhr_n'][i])
+            
+            
+            
             gbhr_n += int(case_matrix['gbhr_n'][i])
     
     
@@ -109,6 +125,64 @@ def calculate_bh_rate(case_matrix, zm=None):
     
     return bh_rate
         
+
+def calculate_bhr_number(case_matrix, zm=None):
+    if 'match' not in case_matrix.keys():
+        #print('----------------------------------------------------------')
+        case_matrix = FileUtils.add_cols_2_matrix(case_matrix, ['match'])
+    
+    count = len(case_matrix['name'])
+    case_matrix['match'] = ['Y'] * len(case_matrix['name'])
+    print('Total case number is %s' % count)
+    for i in range(count):
+        if not case_matrix['bgr'][i]:
+            for key in case_matrix:
+                case_matrix[key][i] = ''
+        if zm:
+            if case_matrix['gzm'][i] != zm:
+                case_matrix['match'][i] = 'N'
+                
+        
+    bhr_n = 0
+
+    for i in range(count):
+        if case_matrix['match'][i] == 'Y':
+            bhr_n += int(case_matrix['wtbhr_n'][i])
+            bhr_n += int(case_matrix['zdbhr_n'][i])
+            if int(case_matrix['wtbhr_n'][i]) == 0 and int(case_matrix['zdbhr_n'][i]) == 0 and int(case_matrix['sws_n'][i]) != 0:
+                bhr_n += int(case_matrix['sws_n'][i])        
+    
+    
+    return bhr_n        
+        
+        
+def calculate_bgr_number(case_matrix, zm=None):
+    if 'match' not in case_matrix.keys():
+        #print('----------------------------------------------------------')
+        case_matrix = FileUtils.add_cols_2_matrix(case_matrix, ['match'])
+    
+    count = len(case_matrix['name'])
+    case_matrix['match'] = ['Y'] * len(case_matrix['name'])
+    print('Total case number is %s' % count)
+    for i in range(count):
+        if not case_matrix['bgr'][i]:
+            for key in case_matrix:
+                case_matrix[key][i] = ''
+        if zm:
+            if case_matrix['gzm'][i] != zm:
+                case_matrix['match'][i] = 'N'
+                
+        
+    bgr_n = 0
+
+    for i in range(count):
+        if case_matrix['match'][i] == 'Y':
+            bgr_n += int(case_matrix['bgr_n'][i])
+            
+    
+    
+    return bgr_n        
+        
         
 def count_case_number_of_zm(case_matrix, zm=None):
     zm_count = case_matrix['zm'].count(zm)
@@ -117,7 +191,8 @@ def count_case_number_of_zm(case_matrix, zm=None):
         
         
         
-def file_analyse(path_2_court, case_matrix):
+def file_analyse(path, court, case_matrix):
+    path_2_court = path + court
     count = len(case_matrix['name'])
     analyser = DocAnalyser.DocAnalyser()
     for i in range(count):
@@ -192,6 +267,8 @@ def file_analyse(path_2_court, case_matrix):
         
         
         
+        case_matrix['region'][i] = get_region(court)
+        case_matrix['level'][i] = get_court_level(court)
         
         case_matrix['zm'][i] = analyser.get_1st_zm()
         for g in CourtList.zm_group_list:
@@ -222,6 +299,7 @@ def file_analyse(path_2_court, case_matrix):
         
         if not case_matrix['gzm'][i]:
             print(case_matrix['zm'][i])
+            
     return case_matrix
 
 
@@ -269,17 +347,164 @@ def bgr_csv_gen(path, court):
     bgr_matrix = bgr_analyse(path + court, case_matrix)
     FileUtils.dump2csv(bgr_matrix, bgr_csv_file)    
 
- 
+def get_court_level(court):
+    for key in CourtList.court_list:
+        if court in CourtList.court_list[key]:
+            if key == 'zhongji':
+                return '中级'
+            else:
+                return '基层'
+    
+    
+    
+def get_region(court):
+    for key in CourtList.court_list:
+        if court in CourtList.court_list[key]:
+            if key == 'zhongji':
+                if court == '成都市中级人民法院':
+                    return 'chengdu'
+                if court == '自贡市中级人民法院':
+                    return 'zigong'  
+                if court == '攀枝花市中级人民法院':
+                    return 'panzhihua'        
+                if court == '泸州市中级人民法院':
+                    return 'luzhou'        
+
+                if court == '德阳市中级人民法院':
+                    return 'deyang'        
+
+                if court == '绵阳市中级人民法院':
+                    return 'mianyang'        
+
+                if court == '广元市中级人民法院':
+                    return 'guangyuan'        
+
+                if court == '遂宁市中级人民法院':
+                    return 'shuining'        
+
+                if court == '内江市中级人民法院':
+                    return 'neijiang'        
+
+                if court == '乐山市中级人民法院':
+                    return 'leshan'        
+
+                if court == '南充市中级人民法院':
+                    return 'nanchong'        
+
+                if court == '眉山市中级人民法院':
+                    return 'meishan'        
+
+                if court == '宜宾市中级人民法院':
+                    return 'yibing'        
+
+                if court == '广安市中级人民法院':
+                    return 'guangan'        
+
+                if court == '达州市中级人民法院':
+                    return 'dazhou'        
+
+                if court == '雅安市中级人民法院':
+                    return 'yaan'        
+
+                if court == '巴中市中级人民法院':
+                    return 'bazhong'        
+
+                if court == '资阳市中级人民法院':
+                    return 'ziyang'        
+
+                if court == '阿坝藏族羌族自治州中级人民法院':
+                    return 'wenchuan'        
+
+                if court == '甘孜藏族自治州中级人民法院':
+                    return 'kangding'        
+
+                if court == '凉山彝族自治州中级人民法院':
+                    return 'xichang'        
+
+                if court == '成都铁路运输中级法院':
+                    return 'tielu'        
+
+            else:
+                return key
+
+def get_middle_court_name(region):
+    if region == 'chengdu':
+        return '成都市中级人民法院'
+        
+    if region == 'zigong':
+        return '自贡市中级人民法院'
+        
+    if region == 'panzhihua':
+        return '攀枝花市中级人民法院'
+                
+    if region == 'luzhou':        
+        return '泸州市中级人民法院'
+       
+    if region == 'deyang':
+        return '德阳市中级人民法院'
+      
+    if region == 'mianyang':        
+        return '绵阳市中级人民法院'
+       
+    if region == 'guangyuan':        
+        return '广元市中级人民法院'
+    
+    if region == 'shuining':        
+        return '遂宁市中级人民法院'
+      
+    if region == 'neijiang':
+        return '内江市中级人民法院'
+
+    if region == 'leshan':
+        return '乐山市中级人民法院'
+
+    if region == 'nanchong':
+        return '南充市中级人民法院'
+
+    if region == 'meishan':        
+        return '眉山市中级人民法院'
+        
+    if  region == 'yibing':
+        return '宜宾市中级人民法院'
+       
+    if  region == 'guangan':        
+        return '广安市中级人民法院'
+       
+    if  region == 'dazhou':        
+        return '达州市中级人民法院'
+       
+    if  region == 'yaan':       
+        return '雅安市中级人民法院'
+       
+    if  region == 'bazhong':        
+        return '巴中市中级人民法院'
+       
+    if  region == 'ziyang':        
+        return '资阳市中级人民法院'
+       
+    if  region == 'wenchuan':        
+        return '阿坝藏族羌族自治州中级人民法院'
+       
+    if  region == 'kangding':        
+        return '甘孜藏族自治州中级人民法院'
+       
+    if  region == 'xichang':        
+        return '凉山彝族自治州中级人民法院'
+       
+    if  region == 'tielu':
+        return '成都铁路运输中级法院'       
+
+                
 def summary_csv_gen(path, court):
     col_list = ['bgrt', 'bhrt', 'bgr', 'bgr_n',
                 'wtbhr', 'wtbhr_n', 'zdbhr',
                 'zdbhr_n', 'sws', 'sws_n',
                 'procedure', 'hyt', 'gbhr', 'gbhr_n',
-                'zm', 'gzm']
+                'zm', 'gzm', 'region', 'level']
     csv_file = path + court + '.csv'
     case_matrix = FileUtils.read_csv(csv_file)
     case_matrix = FileUtils.add_cols_2_matrix(case_matrix, col_list)
-    case_matrix = file_analyse(path + court, case_matrix)
+    case_matrix = file_analyse(path, court, case_matrix)
     csv_file_result = path + court + '_result.csv'     
     FileUtils.dump2csv(case_matrix, csv_file_result) 
     
@@ -345,6 +570,12 @@ def bh_rate_csv_gen(path, year):
                     case_matrix = combine_matrix(case_matrix, FileUtils.read_csv(csv_file))
                 else:
                     case_matrix = FileUtils.read_csv(csv_file)
+        
+        if key != 'zhongji':    
+            court = get_middle_court_name(key)            
+            csv_file = path + court + '_result.csv'            
+            case_matrix = combine_matrix(case_matrix, FileUtils.read_csv(csv_file))        
+                    
         bh_rate = calculate_bh_rate(case_matrix)
         bh_rate_matrix['total'].append(bh_rate)
         bh_rate_matrix['jycx'].append(calculate_bh_rate_2(case_matrix, '简易程序'))
@@ -373,7 +604,154 @@ def bh_rate_csv_gen(path, year):
     print(bh_rate_matrix)
     csv_file_bh_rate = path + year + '_bh_rate.csv'     
     FileUtils.dump2csv(bh_rate_matrix, csv_file_bh_rate) 
+
+
+def bgr_csv_gen(path, year):
+    bgr_number_matrix = {'region':[],'total':[]}
+    col_list = CourtList.zm_group_list
     
+    bgr_number_matrix = FileUtils.add_cols_2_matrix(bgr_number_matrix, col_list)
+    
+    bgr_number_matrix['region'].append('')
+    bgr_number_matrix['region'].append('sichuan')
+    bgr_number_matrix['total'].append('所有')
+    
+    for key in CourtList.court_list:
+        bgr_number_matrix['region'].append(key)
+    for key in CourtList.court_list:    
+        for court in CourtList.court_list[key]:
+            bgr_number_matrix['region'].append(court)
+    
+    # add zm group name to row 2 since it's not good to use Chinese to be dict key.
+    for zm in CourtList.zm_group_list:
+        bgr_number_matrix[zm].append(CourtList.zm_group_name[zm])
+    
+    
+    # Generate matrix for whole sichuan
+    case_matrix = {}
+    for key in CourtList.court_list:
+        for court in CourtList.court_list[key]:
+            csv_file = path + court + '_result.csv'
+            if case_matrix:
+                case_matrix = combine_matrix(case_matrix, FileUtils.read_csv(csv_file))
+            else:
+                case_matrix = FileUtils.read_csv(csv_file)
+    
+    bgr_number = calculate_bgr_number(case_matrix)
+    bgr_number_matrix['total'].append(bgr_number)
+    for zm in CourtList.zm_group_list:
+        bgr_number = calculate_bgr_number(case_matrix, CourtList.zm_group_name[zm])
+        bgr_number_matrix[zm].append(bgr_number)    
+    
+    # Generate matrix for region
+    for key in CourtList.court_list:
+        case_matrix = {}
+        #print('----------------->%s'%key)
+        for court in CourtList.court_list[key]:
+                csv_file = path + court + '_result.csv'
+                #print(csv_file)
+                #print(court)
+                if case_matrix:
+                    case_matrix = combine_matrix(case_matrix, FileUtils.read_csv(csv_file))
+                else:
+                    case_matrix = FileUtils.read_csv(csv_file)
+        bgr_number = calculate_bgr_number(case_matrix)
+        bgr_number_matrix['total'].append(bgr_number)
+        for zm in CourtList.zm_group_list:
+            bgr_number = calculate_bgr_number(case_matrix, CourtList.zm_group_name[zm])
+            bgr_number_matrix[zm].append(bgr_number) 
+        
+    # Generate matrix for court
+    for key in CourtList.court_list:
+        for court in CourtList.court_list[key]:
+            case_matrix = {}
+            csv_file = path + court + '_result.csv'
+            case_matrix = FileUtils.read_csv(csv_file)
+            bgr_number = calculate_bgr_number(case_matrix)
+            bgr_number_matrix['total'].append(bgr_number)
+            for zm in CourtList.zm_group_list:
+                bgr_number = calculate_bgr_number(case_matrix, CourtList.zm_group_name[zm])
+                bgr_number_matrix[zm].append(bgr_number) 
+
+                
+    print(bgr_number_matrix)
+    csv_file_bgr_number = path + year + '_bgr_number.csv'     
+    FileUtils.dump2csv(bgr_number_matrix, csv_file_bgr_number)
+
+    
+def bhr_csv_gen(path, year):
+    bhr_number_matrix = {'region':[],'total':[]}
+    col_list = CourtList.zm_group_list
+    
+    bhr_number_matrix = FileUtils.add_cols_2_matrix(bhr_number_matrix, col_list)
+    
+    bhr_number_matrix['region'].append('')
+    bhr_number_matrix['region'].append('sichuan')
+    bhr_number_matrix['total'].append('所有')
+    
+    for key in CourtList.court_list:
+        bhr_number_matrix['region'].append(key)
+    for key in CourtList.court_list:    
+        for court in CourtList.court_list[key]:
+            bhr_number_matrix['region'].append(court)
+    
+    # add zm group name to row 2 since it's not good to use Chinese to be dict key.
+    for zm in CourtList.zm_group_list:
+        bhr_number_matrix[zm].append(CourtList.zm_group_name[zm])
+    
+    
+    # Generate matrix for whole sichuan
+    case_matrix = {}
+    for key in CourtList.court_list:
+        for court in CourtList.court_list[key]:
+            csv_file = path + court + '_result.csv'
+            if case_matrix:
+                case_matrix = combine_matrix(case_matrix, FileUtils.read_csv(csv_file))
+            else:
+                case_matrix = FileUtils.read_csv(csv_file)
+    
+    bhr_number = calculate_bhr_number(case_matrix)
+    bhr_number_matrix['total'].append(bhr_number)
+    for zm in CourtList.zm_group_list:
+        bhr_number = calculate_bhr_number(case_matrix, CourtList.zm_group_name[zm])
+        bhr_number_matrix[zm].append(bhr_number)    
+    
+    # Generate matrix for region
+    for key in CourtList.court_list:
+        case_matrix = {}
+        #print('----------------->%s'%key)
+        for court in CourtList.court_list[key]:
+                csv_file = path + court + '_result.csv'
+                #print(csv_file)
+                #print(court)
+                if case_matrix:
+                    case_matrix = combine_matrix(case_matrix, FileUtils.read_csv(csv_file))
+                else:
+                    case_matrix = FileUtils.read_csv(csv_file)
+        bhr_number = calculate_bhr_number(case_matrix)
+        bhr_number_matrix['total'].append(bhr_number)
+        for zm in CourtList.zm_group_list:
+            bhr_number = calculate_bhr_number(case_matrix, CourtList.zm_group_name[zm])
+            bhr_number_matrix[zm].append(bhr_number) 
+        
+    # Generate matrix for court
+    for key in CourtList.court_list:
+        for court in CourtList.court_list[key]:
+            case_matrix = {}
+            csv_file = path + court + '_result.csv'
+            case_matrix = FileUtils.read_csv(csv_file)
+            bhr_number = calculate_bhr_number(case_matrix)
+            bhr_number_matrix['total'].append(bhr_number)
+            for zm in CourtList.zm_group_list:
+                bhr_number = calculate_bhr_number(case_matrix, CourtList.zm_group_name[zm])
+                bhr_number_matrix[zm].append(bhr_number) 
+
+                
+    print(bhr_number_matrix)
+    csv_file_bhr_number = path + year + '_bhr_number.csv'     
+    FileUtils.dump2csv(bhr_number_matrix, csv_file_bhr_number) 
+    
+  
     
 def main():    
     desc = ""
@@ -430,6 +808,16 @@ def main():
                 else:
                     case_matrix = FileUtils.read_csv(csv_file)
         FileUtils.dump2csv(case_matrix, csv_tt_file) 
+    
+    
+    if args.calculate ==  'bhr_number':
+        if args.summary:
+            bhr_csv_gen(path, year)
+            sys.exit(0)
+    elif args.calculate ==  'bgr_number':
+        if args.summary:
+            bgr_csv_gen(path, year)
+            sys.exit(0)
     
     
     
@@ -520,21 +908,71 @@ def main():
                     summary_csv_gen(path, court)
     
     if args.test:
+        #file = 'C:\\Users\\lij37\\Code\\Han2015\\内江市中级人民法院\\钟涛故意杀人、盗窃罪一审刑事判决书2015-05-02.docx'
+        folder = 'C:\\Users\\lij37\\Code\\Han2015\\成都市金牛区人民法院'
+        file_list = os.listdir(folder)
         analyser = DocAnalyser.DocAnalyser()
-        court = '成都市锦江区人民法院'
-        file_name = '马亿盗窃罪，许鹏掩饰、隐瞒犯罪所得罪一审刑事判决书2016-01-25.docx'
-        
-        analyser.read_doc('C:\\Users\\lij37\\Code\\Han2016\\' + court + '\\' + file_name)
-        analyser.get_bgr()
+        for file in file_list:
+            #print(file)
+            analyser.analyse_doc(folder + '\\' + file)
+            #print('')
+            
+        #for key, value in case_info.item():
+        #    print('%s %s' % (key, value))
+        #analyser.get_wtbhr()
+        #analyser.get_bgr()
+        #print(analyser.bgr_list)
         #print(analyser.content)
-        print(analyser.bgr_list)
+        #analyser.get_group_bhr()
         
+        #analyser.get_wtbhr()
+        #analyser.get_zdbhr()
+        sys.exit(0)
+        #print(analyser.gbhr)
         #print(analyser.content)
-        
-        
-        
-        
     
+        #print(get_region('南充市中级人民法院'))
+        #path += '中级人民法院'
+        #for court in CourtList.court_list['zhongji']:
+        #    os.makedirs(path + court)
+        #sys.exit(0)
+        
+        #analyser = DocAnalyser.DocAnalyser()
+                
+        #file_list = os.listdir(path + '中级人民法院')
+        #for file in file_list:
+        #    analyser.read_doc(path + '中级人民法院\\' + file)
+        #    analyser.analyse_jufa()
+        #    print(analyser.court)
+        #    FileUtils.copy_csv(path + '中级人民法院\\' + file, path + analyser.court + '\\' + file)
+            
+            #FileUtils.move(path + '中级人民法院\\' + file, path + '中级人民法院\\' + file[:-19] + analyser.date + '.docx')
+            
+        
+        analyser = DocAnalyser.DocAnalyser()
+            
+        for court in CourtList.court_list['zhongji']:
+            file_list = os.listdir(path + court)
+        #    case_matrix = {'name':[], 'doc_id':[], 'date':[],  'case_id':[],  'procedure':[],  'court':[]}
+            case_matrix = {'name':[], 'doc_id':[], 'date':[]}
+        
+            for file in file_list:
+                #print(file)
+                analyser.read_doc(path + court + '\\' + file)
+                analyser.analyse_jufa()
+                case_matrix['name'].append(file[:-15])
+                case_matrix['doc_id'].append('')
+                case_matrix['date'].append(analyser.date)
+        #        case_matrix['case_id'].append(analyser.case_id)
+        #        case_matrix['procedure'].append('')
+        #        case_matrix['court'].append(analyser.court)
+            csv_file = path + court + '.csv'   
+            FileUtils.dump2csv(case_matrix, csv_file)
+        #csv_file = 'C:\\Users\\lij37\\Code\\Han2015\\南充市中级人民法院_result.csv'
+        #case_matrix = FileUtils.read_csv(csv_file)
+        #bh_rate = calculate_bh_rate(case_matrix)
+        #analyser = DocAnalyser.DocAnalyser()
+        
 if __name__ == "__main__":
     main()
     

@@ -118,7 +118,7 @@ def download_case(search_criteria, court, path):
             with open(file_name, "wb") as word_doc:
                 word_doc.write(wenshu.doc_content)
             time.sleep(1)
-        elif os.path.getsize(file_name) < 2000:
+        elif os.path.getsize(file_name) < 25000:
             with codecs.open(file_name, "r", "utf-8") as f:
                 if not 'DOC' in f.readline():
                     wenshu.downloadDocument(path,
